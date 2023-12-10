@@ -1,24 +1,111 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
-	xmlns="http://www.mulesoft.org/schema/mule/core"
-	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+<mule xmlns:batch="http://www.mulesoft.org/schema/mule/batch" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
-http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd">
 	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="65d64e84-7ba7-4403-843c-1d270642e067" >
-		<http:listener-connection host="0.0.0.0" port="8081" />
+		<http:listener-connection host="${http.host}" port="${http.port}" />
 	</http:listener-config>
-	<flow name="mulesoft-with-git-practiceFlow" doc:id="415c8400-330c-4d16-941a-e82ee0c1d901" >
+	<configuration-properties doc:name="Configuration properties" doc:id="d64fc78e-b524-4eef-b0ee-d2526156ec2d" file="myconfig.yaml" />
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="6211621d-6092-4aab-9242-2b8a9a1015e6" basePath="/dummy">
+		<http:request-connection host="dummy" />
+	</http:request-config>
+	<flow name="main_Flow" doc:id="415c8400-330c-4d16-941a-e82ee0c1d901" >
 		<http:listener doc:name="Listener" doc:id="36435722-1291-41a9-8e71-fb5eba98fb2e" config-ref="HTTP_Listener_config" path="/mule"/>
 		<set-payload value="Hello Mulesoft" doc:name="Set Payload" doc:id="b2094418-5e50-46a3-bea9-825beff7c3e8" />
-		<logger level="INFO" doc:name="Logger" doc:id="43ed2fc6-6635-478a-9a1c-ecad6d30b116" message="*******Message*******"/>
+		<set-variable value="#[payload]" doc:name="Set Variable" doc:id="562f1b98-0439-47b9-8138-464fe87bfea3" variableName="myvar"/>
+		<logger level="INFO" doc:name="Logger" doc:id="43ed2fc6-6635-478a-9a1c-ecad6d30b116" message='#["The value of myvar ::::" ++ vars.myvar]'/>
+		<flow-ref doc:name="Flow Reference" doc:id="98f8d3b1-9610-4d7d-9faa-c5f5c6493861" name="private_Flow"/>
+		<logger level="INFO" doc:name="Logger" doc:id="68bcaa04-80e5-4c79-9a2c-4fe1df032638" message="******After Flow Reference******"/>
 		<ee:transform doc:name="Transform Message" doc:id="986cf706-62f5-4ccd-a599-ae9172d4a825">
 			<ee:message>
 				<ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
-payload]]></ee:set-payload>
+vars.myvar]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="9cf5e43b-a03c-4039-93a6-72f2345c29d8" >
+				<logger level="INFO" doc:name="Logger" doc:id="f7b9abf3-4717-434e-b74e-573ced8e8c79" message="********In Main Flow Error Handler********"/>
+				<ee:transform doc:name="Transform Message" doc:id="b569ef61-0fd2-47f2-a732-6d9e3b863d21" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"message":"Good"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</on-error-continue>
+		</error-handler>
+	</flow>
+	<flow name="private_Flow" doc:id="26227aea-416d-4584-acd0-00f6a65006fc" >
+		<logger level="INFO" doc:name="Logger" doc:id="1cf2d512-0255-40ee-a378-6a7ac0c74706" message="********In Private Flow********"/>
+		<http:request method="GET" doc:name="Request" doc:id="3f1b3a2e-cafb-4ace-9b16-6a55a63756b1" config-ref="HTTP_Request_configuration" path="/dummy" />
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="b220de26-065c-4647-b232-ff0124070d6f" type="HTTP:BAD_GATEWAY">
+				<logger level="INFO" doc:name="Logger" doc:id="3d8fb9d0-2db2-4e15-a234-e7dd7b449201" message="********In Private Flow Error Handler (ERR Continue)********"/>
+			</on-error-continue>
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="9a68c4c3-5cf7-4f83-8528-1bcfab914aa4" >
+				<logger level="INFO" doc:name="Logger" doc:id="b0a2c5b3-ac52-4203-bc3c-901a51dd9821" message="********In Private Flow Error Handler (ERR Propagate)********"/>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<flow name="for-each_Flow" doc:id="36cb83b1-caf3-4cbe-a002-be2cf32874cd" >
+		<http:listener doc:name="Listener" doc:id="ba51faad-ac32-4a6b-b10c-dd02d286f011" config-ref="HTTP_Listener_config" path="/for-each"/>
+		<set-payload value="#[[1,2,3,4,5]]" doc:name="[1,2,3,4,5]" doc:id="717edd78-3080-49aa-aa1f-014b749b4f1c" />
+		<set-variable value="#[[]]" doc:name="Set Variable" doc:id="ef3470cd-b56a-4ae8-9eba-f4e68abf9a19" variableName="mypayload"/>
+		<foreach doc:name="For Each" doc:id="ae995558-0460-4671-b9d7-f982aad0a094" >
+			<logger level="INFO" doc:name="Logger" doc:id="4865dc9a-d5f7-4146-92de-667e7c154f6d" message='#["**********Inside For Each-" ++ vars.counter ++ "*********"]'/>
+			<set-payload value="#[payload*5]" doc:name="Set Payload" doc:id="f41c5792-05ae-46b4-b4ec-41d676b34822" />
+			<logger level="INFO" doc:name="Logger" doc:id="d74b1bc7-dbf2-47dc-b75e-017a9886e108" message="#[payload]"/>
+			<set-variable value="#[vars.mypayload + payload]" doc:name="Set Variable" doc:id="04d98255-2d43-494d-a4b5-4bca155d35f0" variableName="mypayload"/>
+		</foreach>
+		<logger level="INFO" doc:name="Logger" doc:id="284f3264-96c8-4976-9de0-261bacc30ff8" message="**********After For Each**********"/>
+		<ee:transform doc:name="Transform Message" doc:id="e4f4fbfc-f9c0-4d7b-892e-cf8a93f50851" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+vars.mypayload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="batch-processing_Flow" doc:id="6381b0d8-58e6-406b-9a37-14743601b02f" >
+		<http:listener doc:name="Listener" doc:id="7a1f047b-20bf-4100-9526-00fa2a7eecee" config-ref="HTTP_Listener_config" path="/batch"/>
+		<set-payload value="#[[1,2,3,4,5]]" doc:name="[1,2,3,4,5]" doc:id="0a323b1c-dc17-4816-bc34-e1211b223786" />
+		<batch:job jobName="mulesoft-with-git-practiceBatch_Job" doc:id="411d9e99-12da-4222-bcbf-88a4823c07d5" >
+			<batch:process-records >
+				<batch:step name="Batch_Step" doc:id="4e0a1fc5-5ca9-4946-943c-f9697e466380" >
+					<try doc:name="Try" doc:id="ef8f84c2-3577-4850-bf50-be8834ab85d1" >
+						<set-payload value="#[payload*5]" doc:name="Set Payload" doc:id="41b6ad5a-5b0f-46b2-8b89-8af4a284a764" />
+						<error-handler >
+							<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="59a11922-422d-4617-bc92-386e64223925" >
+								<logger level="INFO" doc:name="Logger" doc:id="6b3a8d12-3cc1-4693-b229-2181486ff03c" message='#["value in err ::::" ++ payload]'/>
+							</on-error-continue>
+						</error-handler>
+					</try>
+					<batch:aggregator doc:name="Batch Aggregator" doc:id="7ed59130-0e32-47ff-9753-b434e245e9d1" size="2">
+						<logger level="INFO" doc:name="Logger" doc:id="bf37a2ac-c465-41d6-a3ac-d6b29a59f40e" message="#[payload]"/>
+					</batch:aggregator>
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete >
+				<logger level="INFO" doc:name="Logger" doc:id="7dbba51b-32b8-4966-905f-f71a020dbc66" message="#[payload]"/>
+			</batch:on-complete>
+		</batch:job>
+		<ee:transform doc:name="Transform Message" doc:id="32ff4bf4-7522-4b99-8bd9-4057195157c4">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
 	</flow>
 </mule>
