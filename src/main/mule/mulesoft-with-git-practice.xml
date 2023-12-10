@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="65d64e84-7ba7-4403-843c-1d270642e067" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<flow name="mulesoft-with-git-practiceFlow" doc:id="415c8400-330c-4d16-941a-e82ee0c1d901" >
+		<http:listener doc:name="Listener" doc:id="36435722-1291-41a9-8e71-fb5eba98fb2e" config-ref="HTTP_Listener_config" path="/mule"/>
+		<set-payload value="Hello Mulesoft" doc:name="Set Payload" doc:id="b2094418-5e50-46a3-bea9-825beff7c3e8" />
+		<ee:transform doc:name="Transform Message" doc:id="986cf706-62f5-4ccd-a599-ae9172d4a825">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
